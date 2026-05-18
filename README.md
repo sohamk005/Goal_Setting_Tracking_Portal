@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Goal Setting & Tracking Portal  
+**Participant:** Soham Kulkarni  
 
-## Getting Started
+---
 
-First, run the development server:
+## 1. Working Link  
+**Live Demo URL:** [https://goal-setting-tracking-portal-mu.vercel.app/](https://goal-setting-tracking-portal-mu.vercel.app/)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 2. Source Code Repository  
+**GitHub Repository:** [https://github.com/sohamk005/Goal_Setting_Tracking_Portal](https://github.com/sohamk005/Goal_Setting_Tracking_Portal)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 3. Architecture Diagram  
+The application follows a modern serverless architecture, utilizing Next.js for the frontend and Supabase (PostgreSQL) as a Backend-as-a-Service (BaaS). For this MVP demonstration, authentication is intentionally simplified using a Context-based Identity Switcher to enable seamless role-based workflow testing and faster evaluation. 
 
-## Learn More
+*(See the `Architecture Diagram.png` image for visual representation).*
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 4. Key Features & Workflows  
+- **Role-Based Workspaces**: Distinct dashboards tailored for Employees (Goal Creation), Managers (Goal Evaluation & Review), and HR Admins (Audit Trails).  
+- **Frictionless Demo Identity Switcher**: A seamless dropdown toggle to instantly bounce between roles without login barriers, perfect for live demonstrations.  
+- **Real-time Database Persistence**: Direct integration with Supabase PostgreSQL ensuring all goals, metric weights, and quarterly check-ins are durably saved.  
+- **Automated Data Validations**: Frontend validation ensuring total goal weightage equals strictly 100% before submission to the manager.  
+- **Live Audit Trails**: Administrator view that tracks database actions for organizational compliance and transparency.  
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Technology Stack 
+- **Frontend**: Next.js + Tailwind CSS + Shadcn UI  
+- **Backend**: Supabase  
+- **Database**: PostgreSQL  
+- **Hosting**: Vercel 
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Demo Access 
+The application uses a Context-based Identity Switcher for seamless demo access. 
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Available roles:** 
+- Employee  
+- Manager (L1)  
+- HR Admin  
+
+Users can instantly switch between workflows from the top navigation banner without requiring authentication. 
