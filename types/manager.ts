@@ -1,3 +1,5 @@
+import type { UomType, GoalStatus, Quarter } from "@/types/goal";
+
 export type MetricType = "min" | "max" | "timeline" | "zero";
 
 export type TimelineStatus = "on_time" | "delayed" | "missed";
@@ -17,6 +19,9 @@ export interface EmployeeGoal {
   review_status: GoalReviewStatus;
   metric_type: MetricType;
   thrust_area?: string;
+  uom_type?: UomType;
+  status?: GoalStatus;
+  quarter?: Quarter;
 }
 
 export interface QuarterlyCheckIn {

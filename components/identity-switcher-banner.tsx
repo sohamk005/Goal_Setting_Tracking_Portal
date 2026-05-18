@@ -2,44 +2,37 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDownIcon, UserCircle2Icon } from "lucide-react";
+import { LogOutIcon, SparklesIcon, UserCircle2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useUser, type UserRole } from "@/context/UserContext";
+import { useUser } from "@/context/UserContext";
 import { cn } from "@/lib/utils";
 
-const ROLE_OPTIONS: { role: UserRole; label: string }[] = [
-  { role: "employee", label: "Employee" },
-  { role: "manager", label: "Manager" },
-  { role: "admin", label: "HR Admin" },
-];
-
-const ROLE_LABELS: Record<UserRole, string> = {
+const ROLE_LABELS: Record<string, string> = {
   employee: "Employee",
   manager: "Manager",
   admin: "HR Admin",
 };
 
+const ROLE_COLORS: Record<string, string> = {
+  employee: "bg-sky-500/15 text-sky-400 ring-sky-500/25",
+  manager: "bg-violet-500/15 text-violet-400 ring-violet-500/25",
+  admin: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/25",
+};
+
 export function IdentitySwitcherBanner() {
   const router = useRouter();
-  const { currentUser, switchUser } = useUser();
+  const { currentUser, loading, signOut } = useUser();
 
-  const handleRoleSwitch = (role: UserRole) => {
-    if (role === currentUser.role) return;
-
-    switchUser(role);
-    toast.success("Swapped Identity Successfully!");
-    router.push(`/dashboard/${role}`);
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out successfully.");
+    router.push("/login");
   };
+
+  // Don't render on auth pages (currentUser is null when loading or unauthenticated)
+  if (loading || !currentUser) return null;
 
   return (
     <header
@@ -55,43 +48,38 @@ export function IdentitySwitcherBanner() {
           href="/"
           className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          <UserCircle2Icon className="size-4 shrink-0 text-foreground/80" />
-          <span className="truncate">
-            Signed in as{" "}
-            <span className="font-medium text-foreground">
-              {currentUser.name}
-            </span>
+          <SparklesIcon className="size-4 shrink-0 text-amber-400" />
+          <span className="hidden font-semibold text-foreground sm:inline">
+            AtomQuest Portal
           </span>
         </Link>
 
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <UserCircle2Icon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="hidden truncate text-muted-foreground sm:inline">
+              {currentUser.name}
+            </span>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
+                ROLE_COLORS[currentUser.role] ?? ROLE_COLORS.employee,
+              )}
             >
-              {ROLE_LABELS[currentUser.role]}
-              <ChevronDownIcon className="size-3.5 opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-44">
-            <DropdownMenuLabel>Switch identity</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {ROLE_OPTIONS.map(({ role, label }) => (
-              <DropdownMenuItem
-                key={role}
-                onClick={() => handleRoleSwitch(role)}
-                className={cn(
-                  currentUser.role === role &&
-                    "bg-accent font-medium text-accent-foreground",
-                )}
-              >
-                {label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {ROLE_LABELS[currentUser.role] ?? currentUser.role}
+            </span>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSignOut}
+            className="h-7 gap-1.5 border-border bg-background px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <LogOutIcon className="size-3.5" />
+            Sign out
+          </Button>
+        </div>
       </div>
     </header>
   );

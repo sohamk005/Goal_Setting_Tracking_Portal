@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import {
   ArrowRightIcon,
   BriefcaseIcon,
-  InfoIcon,
+  Loader2Icon,
   ShieldCheckIcon,
   SparklesIcon,
   UserIcon,
@@ -22,30 +24,30 @@ import {
 import { useUser } from "@/context/UserContext";
 import { cn } from "@/lib/utils";
 
-const EVALUATION_TRACKS = [
-  {
+const ROLE_TRACKS = {
+  employee: {
     journey: "Employee Journey",
-    title: "Soham Kulkarni",
+    title: "Individual Contributor",
     description:
-      "Draft weighted OKRs, submit your goal sheet, and track quarterly progress from an individual contributor lens.",
+      "Draft weighted goals, set Thrust Areas and UoM, submit your goal sheet, and track quarterly progress.",
     href: "/dashboard/employee",
     icon: UserIcon,
     accent: "from-sky-500/20 to-cyan-500/5",
     ring: "ring-sky-500/25",
-    buttonLabel: "Enter employee workspace",
+    buttonLabel: "Go to employee workspace",
   },
-  {
+  manager: {
     journey: "Manager Journey",
     title: "L1 Team Supervisor",
     description:
-      "Review team submissions, score metrics, and unlock quarterly evaluations for direct reports.",
+      "Review team submissions, score metrics, approve goals, and conduct quarterly check-ins.",
     href: "/dashboard/manager",
     icon: BriefcaseIcon,
     accent: "from-violet-500/20 to-purple-500/5",
     ring: "ring-violet-500/25",
-    buttonLabel: "Enter manager workspace",
+    buttonLabel: "Go to manager workspace",
   },
-  {
+  admin: {
     journey: "HR Administration & Audits",
     title: "Corporate Compliance",
     description:
@@ -54,69 +56,97 @@ const EVALUATION_TRACKS = [
     icon: ShieldCheckIcon,
     accent: "from-emerald-500/20 to-teal-500/5",
     ring: "ring-emerald-500/25",
-    buttonLabel: "Enter admin workspace",
+    buttonLabel: "Go to admin workspace",
   },
-] as const;
+} as const;
 
 export default function HomePage() {
-  const { currentUser } = useUser();
+  const { currentUser, loading } = useUser();
+  const router = useRouter();
 
-  return (
-    <main className="relative flex flex-1 flex-col bg-slate-950 text-slate-100">
-      <PageBackdrop />
+  // Auto-redirect to the user's dashboard if already logged in
+  useEffect(() => {
+    if (!loading && currentUser) {
+      router.replace(`/dashboard/${currentUser.role}`);
+    }
+  }, [loading, currentUser, router]);
 
-      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6 sm:py-14 lg:py-16">
-        <section className="space-y-6 text-center sm:text-left">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/80 px-3 py-1 text-xs font-medium tracking-wide text-slate-300 uppercase shadow-lg shadow-black/20 backdrop-blur-sm">
-            <SparklesIcon className="size-3.5 text-amber-400" />
-            Atomberg AtomQuest Hackathon
-          </div>
-
-          <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.1]">
-            AtomQuest Goal Setting &amp; Tracking Portal
-          </h1>
-
-          <p className="max-w-2xl text-base text-slate-300 sm:text-lg">
-            Welcome back,{" "}
-            <span className="font-medium text-white">{currentUser.name}</span>.
-            Choose an evaluation track below to explore the end-to-end goal
-            lifecycle for employees, managers, and HR administrators.
-          </p>
-
-          <div
-            className={cn(
-              "mx-auto flex max-w-3xl items-start gap-3 rounded-xl border border-slate-700/70",
-              "bg-slate-900/70 px-4 py-3 text-left shadow-xl shadow-black/25 backdrop-blur-sm sm:mx-0",
-            )}
-          >
-            <InfoIcon
-              className="mt-0.5 size-4 shrink-0 text-sky-400"
-              aria-hidden
-            />
-            <p className="text-sm leading-relaxed text-slate-300">
-              <span className="font-medium text-slate-100">For judges:</span>{" "}
-              You can switch between Employee, Manager, and HR Admin profiles at
-              any time using the global identity switcher in the navigation
-              banner at the very top of your browser view — no need to return to
-              this page.
-            </p>
-          </div>
-        </section>
-
-        <section
-          aria-label="Evaluation tracks"
-          className="grid flex-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
-        >
-          {EVALUATION_TRACKS.map((track) => (
-            <TrackCard key={track.href} track={track} />
-          ))}
-        </section>
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center gap-2 py-24 text-slate-400">
+        <Loader2Icon className="size-5 animate-spin" />
+        Loading…
       </div>
-    </main>
+    );
+  }
+
+  // If not logged in, show the portal overview with login CTA
+  if (!currentUser) {
+    return (
+      <main className="relative flex flex-1 flex-col bg-slate-950 text-slate-100">
+        <PageBackdrop />
+
+        <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6 sm:py-14 lg:py-16">
+          <section className="space-y-6 text-center sm:text-left">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/80 px-3 py-1 text-xs font-medium tracking-wide text-slate-300 uppercase shadow-lg shadow-black/20 backdrop-blur-sm">
+              <SparklesIcon className="size-3.5 text-amber-400" />
+              Atomberg AtomQuest Hackathon
+            </div>
+
+            <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl lg:leading-[1.1]">
+              AtomQuest Goal Setting &amp; Tracking Portal
+            </h1>
+
+            <p className="max-w-2xl text-base text-slate-300 sm:text-lg">
+              A structured, digital portal for the full lifecycle of employee
+              goals — creation, alignment, quarterly check-ins, and performance
+              visibility.
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                asChild
+                size="lg"
+                className="bg-sky-600 text-white hover:bg-sky-500"
+              >
+                <Link href="/login">Sign in</Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+              >
+                <Link href="/signup">Create account</Link>
+              </Button>
+            </div>
+          </section>
+
+          <section
+            aria-label="Role overviews"
+            className="grid flex-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
+          >
+            {(
+              Object.values(ROLE_TRACKS) as (typeof ROLE_TRACKS)[keyof typeof ROLE_TRACKS][]
+            ).map((track) => (
+              <TrackCard key={track.href} track={track} />
+            ))}
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  // Logged-in state renders a spinner while the redirect fires
+  return (
+    <div className="flex flex-1 items-center justify-center gap-2 py-24 text-slate-400">
+      <Loader2Icon className="size-5 animate-spin" />
+      Redirecting…
+    </div>
   );
 }
 
-type Track = (typeof EVALUATION_TRACKS)[number];
+type Track = (typeof ROLE_TRACKS)[keyof typeof ROLE_TRACKS];
 
 function TrackCard({ track }: { track: Track }) {
   const Icon = track.icon;
@@ -159,7 +189,7 @@ function TrackCard({ track }: { track: Track }) {
           size="lg"
           className="h-10 w-full gap-2 bg-slate-100 text-slate-900 shadow-md shadow-black/20 hover:bg-white hover:text-slate-900"
         >
-          <Link href={track.href}>
+          <Link href="/login">
             {track.buttonLabel}
             <ArrowRightIcon className="size-4" aria-hidden />
           </Link>

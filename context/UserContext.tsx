@@ -4,10 +4,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+
+import { supabase } from "@/utils/supabase";
 
 export type UserRole = "employee" | "manager" | "admin";
 
@@ -16,48 +19,78 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  manager_id?: string;
+  manager_id?: string | null;
 }
 
-const MOCK_USERS: Record<UserRole, User> = {
-  employee: {
-    id: "e1111111-1111-1111-1111-111111111111",
-    name: "Soham Kulkarni",
-    email: "soham.kulkarni@atomquest.com",
-    role: "employee",
-    manager_id: "m2222222-2222-2222-2222-222222222222",
-  },
-  manager: {
-    id: "m2222222-2222-2222-2222-222222222222",
-    name: "L1 Manager",
-    email: "l1.manager@atomquest.com",
-    role: "manager",
-  },
-  admin: {
-    id: "a3333333-3333-3333-3333-333333333333",
-    name: "HR Central Admin",
-    email: "hr.admin@atomquest.com",
-    role: "admin",
-  },
-};
-
 interface UserContextValue {
-  currentUser: User;
-  switchUser: (role: UserRole) => void;
+  currentUser: User | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS.employee);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const switchUser = useCallback((role: UserRole) => {
-    setCurrentUser(MOCK_USERS[role]);
+  const loadUser = useCallback(async () => {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      setCurrentUser(null);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch profile from profiles table
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", authUser.id)
+      .single();
+
+    if (profile) {
+      setCurrentUser({
+        id: profile.id as string,
+        name: profile.name as string,
+        email: profile.email as string,
+        role: profile.role as UserRole,
+        manager_id: profile.manager_id as string | null,
+      });
+    } else {
+      setCurrentUser(null);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void loadUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setCurrentUser(null);
+        setLoading(false);
+      } else {
+        void loadUser();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [loadUser]);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
   }, []);
 
   const value = useMemo(
-    () => ({ currentUser, switchUser }),
-    [currentUser, switchUser],
+    () => ({ currentUser, loading, signOut }),
+    [currentUser, loading, signOut],
   );
 
   return (
@@ -72,5 +105,3 @@ export function useUser() {
   }
   return context;
 }
-
-export { MOCK_USERS };

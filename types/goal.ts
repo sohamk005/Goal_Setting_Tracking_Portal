@@ -1,8 +1,18 @@
+export type UomType = "numeric" | "percent" | "timeline" | "zero";
+export type GoalStatus = "not_started" | "on_track" | "completed";
+export type Quarter = "Q1" | "Q2" | "Q3" | "Q4" | "Annual";
+
 export interface Goal {
   id: string;
   title: string;
+  description?: string;
   targets: string;
+  thrust_area: string;
+  uom_type: UomType;
+  target_value: number;
   weightage: number;
+  status?: GoalStatus;
+  quarter?: Quarter;
   shared_from_id?: string | null;
 }
 
@@ -26,8 +36,38 @@ const MAX_GOALS = 8;
 const MIN_WEIGHTAGE = 10;
 const REQUIRED_TOTAL = 100;
 
+export const THRUST_AREAS = [
+  "Revenue Growth",
+  "Customer Excellence",
+  "Operational Excellence",
+  "Strategic Partnerships",
+  "People & Culture",
+  "Innovation & Technology",
+  "Compliance & Risk",
+  "Other",
+] as const;
+
+export const UOM_LABELS: Record<UomType, string> = {
+  numeric: "Numeric (Higher is better)",
+  percent: "% (Higher is better)",
+  timeline: "Timeline (Date-based)",
+  zero: "Zero-based (0 = Success)",
+};
+
+// Map UoM type to the metric_type used in scoring
+export const UOM_TO_METRIC: Record<UomType, string> = {
+  numeric: "min",
+  percent: "min",
+  timeline: "timeline",
+  zero: "zero",
+};
+
 function isGoalComplete(goal: Goal): boolean {
-  return goal.title.trim().length > 0 && goal.targets.trim().length > 0;
+  return (
+    goal.title.trim().length > 0 &&
+    goal.targets.trim().length > 0 &&
+    goal.thrust_area.trim().length > 0
+  );
 }
 
 function isWeightageValid(weightage: number): boolean {
@@ -53,7 +93,9 @@ export function validateGoalSheet(goals: Goal[]): GoalSheetValidation {
     errors.push(`You cannot submit more than ${MAX_GOALS} goals.`);
   }
   if (!allGoalsComplete) {
-    errors.push("Every goal must have a title and measurable targets.");
+    errors.push(
+      "Every goal must have a title, targets, and a thrust area selected.",
+    );
   }
   if (!eachWeightValid) {
     errors.push(

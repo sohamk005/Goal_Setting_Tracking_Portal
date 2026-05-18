@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DownloadIcon, Loader2Icon, ShieldIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,17 +29,19 @@ import type { AuditLog } from "@/types/admin";
 import type { EmployeeGoal, QuarterlyCheckIn } from "@/types/manager";
 
 export default function AdminDashboardPage() {
-  const { currentUser } = useUser();
+  const { currentUser, loading: authLoading } = useUser();
+  const router = useRouter();
 
   const [allGoals, setAllGoals] = useState<EmployeeGoal[]>([]);
   const [lockedGoals, setLockedGoals] = useState<EmployeeGoal[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [checkIns, setCheckIns] = useState<QuarterlyCheckIn[]>([]);
   const [loading, setLoading] = useState(true);
-  const [usingMockData, setUsingMockData] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [goalsResult, lockedResult, logsResult, checkInsResult] =
         await Promise.all([
@@ -48,25 +51,32 @@ export default function AdminDashboardPage() {
           fetchCheckInsForAnalytics(),
         ]);
 
-      setAllGoals(goalsResult.goals);
-      setLockedGoals(lockedResult.goals);
-      setAuditLogs(logsResult.logs);
-      setCheckIns(checkInsResult.checkIns);
-      setUsingMockData(
-        goalsResult.fromMock ||
-          lockedResult.fromMock ||
-          logsResult.fromMock ||
-          checkInsResult.fromMock,
-      );
+      setAllGoals(goalsResult);
+      setLockedGoals(lockedResult);
+      setAuditLogs(logsResult);
+      setCheckIns(checkInsResult);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to load admin data.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (currentUser.role !== "admin") return;
-    loadData();
-  }, [currentUser.role, loadData]);
+    if (authLoading) return;
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+    if (currentUser.role !== "admin") {
+      router.push(`/dashboard/${currentUser.role}`);
+      return;
+    }
+    void loadData();
+  }, [authLoading, currentUser, loadData, router]);
 
   const thrustWeightage = useMemo(
     () => aggregateThrustWeightage(allGoals),
@@ -95,21 +105,16 @@ export default function AdminDashboardPage() {
     toast.success(`Exported ${allGoals.length} goals to CSV.`);
   };
 
-  if (currentUser.role !== "admin") {
+  if (authLoading || (loading && !error)) {
     return (
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 py-12 md:px-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Executive dashboard</CardTitle>
-            <CardDescription>
-              Switch to the HR Admin identity using the banner above to access
-              this view.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </main>
+      <div className="flex flex-1 items-center justify-center gap-2 py-24 text-muted-foreground">
+        <Loader2Icon className="size-5 animate-spin" />
+        Loading executive data…
+      </div>
     );
   }
+
+  if (!currentUser || currentUser.role !== "admin") return null;
 
   return (
     <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-1 flex-col gap-8 px-4 py-10 md:px-8">
@@ -120,13 +125,10 @@ export default function AdminDashboardPage() {
             Executive Dashboard
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {currentUser.name} · Company-wide goal governance & analytics
+            {currentUser.name} · Company-wide goal governance &amp; analytics
           </p>
-          {usingMockData ? (
-            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-              Simulation data active — wire Supabase tables for production
-              metrics.
-            </p>
+          {error ? (
+            <p className="mt-2 text-xs text-destructive">Error: {error}</p>
           ) : null}
         </div>
         <Button
@@ -140,11 +142,13 @@ export default function AdminDashboardPage() {
         </Button>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
-          <Loader2Icon className="size-5 animate-spin" />
-          Loading executive data…
-        </div>
+      {error ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Unable to load data</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+        </Card>
       ) : (
         <div className="flex w-full min-w-0 flex-col gap-8">
           <ExecutiveCharts

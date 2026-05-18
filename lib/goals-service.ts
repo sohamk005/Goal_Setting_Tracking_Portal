@@ -1,4 +1,3 @@
-import { MOCK_USERS } from "@/context/UserContext";
 import type {
   EmployeeGoal,
   GoalReviewStatus,
@@ -7,75 +6,9 @@ import type {
 } from "@/types/manager";
 import { supabase } from "@/utils/supabase";
 
-const MOCK_GOALS: EmployeeGoal[] = [
-  {
-    id: "g1",
-    employee_id: MOCK_USERS.employee.id,
-    employee_name: MOCK_USERS.employee.name,
-    manager_id: MOCK_USERS.manager.id,
-    title: "Increase pipeline conversion",
-    targets: "Lift qualified lead-to-opportunity rate from 18% to 25% by Q4.",
-    target_value: 25,
-    weightage: 35,
-    is_locked: false,
-    review_status: "pending",
-    metric_type: "min",
-  },
-  {
-    id: "g2",
-    employee_id: MOCK_USERS.employee.id,
-    employee_name: MOCK_USERS.employee.name,
-    manager_id: MOCK_USERS.manager.id,
-    title: "Customer retention uplift",
-    targets: "Reduce logo churn below 4% and improve NPS to 52+.",
-    target_value: 52,
-    weightage: 25,
-    is_locked: false,
-    review_status: "pending",
-    metric_type: "max",
-  },
-  {
-    id: "g3",
-    employee_id: MOCK_USERS.employee.id,
-    employee_name: MOCK_USERS.employee.name,
-    manager_id: MOCK_USERS.manager.id,
-    title: "Enablement & documentation",
-    targets: "Publish 6 playbooks and run 2 cross-team workshops.",
-    target_value: 6,
-    weightage: 20,
-    is_locked: false,
-    review_status: "rework",
-    metric_type: "timeline",
-  },
-  {
-    id: "g4",
-    employee_id: MOCK_USERS.employee.id,
-    employee_name: MOCK_USERS.employee.name,
-    manager_id: MOCK_USERS.manager.id,
-    title: "Operational excellence",
-    targets: "Cut cycle time on priority requests by 15%.",
-    target_value: 15,
-    weightage: 20,
-    is_locked: true,
-    review_status: "approved",
-    metric_type: "zero",
-  },
-];
-
-const MOCK_CHECKINS: QuarterlyCheckIn[] = MOCK_GOALS.map((goal) => ({
-  id: `checkin-${goal.id}`,
-  goal_id: goal.id,
-  employee_id: goal.employee_id,
-  employee_name: goal.employee_name,
-  goal_title: goal.title,
-  planned_target: goal.target_value,
-  actual_achievement:
-    goal.metric_type === "zero" ? 0 : Math.round(goal.target_value * 0.85),
-  metric_type: goal.metric_type,
-  timeline_status: "on_time" as TimelineStatus,
-  manager_comment: "",
-}));
-
+// ---------------------------------------------------------------
+// Map DB rows to typed objects
+// ---------------------------------------------------------------
 function mapGoalRow(row: Record<string, unknown>): EmployeeGoal {
   return {
     id: String(row.id),
@@ -90,6 +23,10 @@ function mapGoalRow(row: Record<string, unknown>): EmployeeGoal {
     review_status: (row.review_status as GoalReviewStatus) ?? "pending",
     metric_type:
       (row.metric_type as EmployeeGoal["metric_type"]) ?? "min",
+    thrust_area: row.thrust_area ? String(row.thrust_area) : "Unassigned",
+    uom_type: (row.uom_type as EmployeeGoal["uom_type"]) ?? "numeric",
+    status: (row.status as EmployeeGoal["status"]) ?? "not_started",
+    quarter: (row.quarter as EmployeeGoal["quarter"]) ?? "Q1",
   };
 }
 
@@ -110,58 +47,52 @@ function mapCheckInRow(row: Record<string, unknown>): QuarterlyCheckIn {
   };
 }
 
+// ---------------------------------------------------------------
+// Fetch all goals for a manager's team
+// ---------------------------------------------------------------
 export async function fetchGoalsForManager(
   managerId: string,
-): Promise<{ goals: EmployeeGoal[]; fromMock: boolean }> {
+): Promise<EmployeeGoal[]> {
   const { data, error } = await supabase
     .from("goals")
     .select("*")
     .eq("manager_id", managerId)
     .order("employee_name", { ascending: true });
 
-  if (error || !data?.length) {
-    return {
-      goals: MOCK_GOALS.filter((g) => g.manager_id === managerId),
-      fromMock: true,
-    };
-  }
-
-  return { goals: data.map(mapGoalRow), fromMock: false };
+  if (error) throw error;
+  return (data ?? []).map(mapGoalRow);
 }
 
+// ---------------------------------------------------------------
+// Fetch quarterly check-ins for a manager's team
+// ---------------------------------------------------------------
 export async function fetchQuarterlyCheckIns(
   managerId: string,
-): Promise<{ checkIns: QuarterlyCheckIn[]; fromMock: boolean }> {
+): Promise<QuarterlyCheckIn[]> {
   const { data, error } = await supabase
     .from("goal_checkins")
-    .select("*, goals!inner(manager_id, title, employee_id, employee_name, metric_type)")
+    .select(
+      "*, goals!inner(manager_id, title, employee_id, employee_name, metric_type)",
+    )
     .eq("goals.manager_id", managerId);
 
-  if (error || !data?.length) {
-    const goals = MOCK_GOALS.filter((g) => g.manager_id === managerId);
-    return {
-      checkIns: MOCK_CHECKINS.filter((c) =>
-        goals.some((g) => g.id === c.goal_id),
-      ),
-      fromMock: true,
-    };
-  }
+  if (error) throw error;
 
-  return {
-    checkIns: data.map((row) => {
-      const goals = row.goals as Record<string, unknown> | undefined;
-      return mapCheckInRow({
-        ...row,
-        goal_title: goals?.title,
-        employee_id: goals?.employee_id ?? row.employee_id,
-        employee_name: goals?.employee_name ?? row.employee_name,
-        metric_type: goals?.metric_type ?? row.metric_type,
-      });
-    }),
-    fromMock: false,
-  };
+  return (data ?? []).map((row) => {
+    const goal = row.goals as Record<string, unknown> | undefined;
+    return mapCheckInRow({
+      ...row,
+      goal_title: goal?.title,
+      employee_id: goal?.employee_id ?? row.employee_id,
+      employee_name: goal?.employee_name ?? row.employee_name,
+      metric_type: goal?.metric_type ?? row.metric_type,
+    });
+  });
 }
 
+// ---------------------------------------------------------------
+// Update individual goal fields (manager inline edit)
+// ---------------------------------------------------------------
 export async function updateGoalFields(
   goalId: string,
   patch: Pick<EmployeeGoal, "targets" | "target_value" | "weightage">,
@@ -178,15 +109,21 @@ export async function updateGoalFields(
   if (error) throw error;
 }
 
+// ---------------------------------------------------------------
+// Approve and lock all goals for an employee
+// ---------------------------------------------------------------
 export async function approveAndLockEmployeeGoals(
   employeeId: string,
   managerId: string,
   goals: EmployeeGoal[],
 ): Promise<void> {
   const employeeGoalIds = goals
-    .filter((g) => g.employee_id === employeeId && g.manager_id === managerId)
+    .filter(
+      (g) => g.employee_id === employeeId && g.manager_id === managerId,
+    )
     .map((g) => g.id);
 
+  // Apply any pending inline edits first
   const updates = goals
     .filter((g) => employeeGoalIds.includes(g.id))
     .map((g) =>
@@ -199,6 +136,7 @@ export async function approveAndLockEmployeeGoals(
 
   await Promise.all(updates);
 
+  // Lock + approve
   const { error } = await supabase
     .from("goals")
     .update({ is_locked: true, review_status: "approved" })
@@ -206,8 +144,21 @@ export async function approveAndLockEmployeeGoals(
     .eq("manager_id", managerId);
 
   if (error) throw error;
+
+  // Write audit log
+  await supabase.from("audit_logs").insert({
+    table_name: "goals",
+    record_id: employeeId,
+    action: "APPROVE",
+    old_values: { review_status: "pending" },
+    new_values: { review_status: "approved", is_locked: true },
+    changed_by: "Manager",
+  });
 }
 
+// ---------------------------------------------------------------
+// Return goals for rework
+// ---------------------------------------------------------------
 export async function returnGoalsForRework(
   employeeId: string,
   managerId: string,
@@ -219,21 +170,38 @@ export async function returnGoalsForRework(
     .eq("manager_id", managerId);
 
   if (error) throw error;
+
+  await supabase.from("audit_logs").insert({
+    table_name: "goals",
+    record_id: employeeId,
+    action: "REWORK",
+    old_values: { review_status: "pending" },
+    new_values: { review_status: "rework", is_locked: false },
+    changed_by: "Manager",
+  });
 }
 
+// ---------------------------------------------------------------
+// Save quarterly check-in (manager adds comment)
+// ---------------------------------------------------------------
 export async function saveQuarterlyCheckIn(
   checkIn: QuarterlyCheckIn,
 ): Promise<void> {
-  const { error } = await supabase.from("goal_checkins").upsert({
-    id: checkIn.id,
-    goal_id: checkIn.goal_id,
-    employee_id: checkIn.employee_id,
-    planned_target: checkIn.planned_target,
-    actual_achievement: checkIn.actual_achievement,
-    metric_type: checkIn.metric_type,
-    timeline_status: checkIn.timeline_status,
-    manager_comment: checkIn.manager_comment,
-  });
+  const { error } = await supabase.from("goal_checkins").upsert(
+    {
+      id: checkIn.id,
+      goal_id: checkIn.goal_id,
+      employee_id: checkIn.employee_id,
+      employee_name: checkIn.employee_name,
+      goal_title: checkIn.goal_title,
+      planned_target: checkIn.planned_target,
+      actual_achievement: checkIn.actual_achievement,
+      metric_type: checkIn.metric_type,
+      timeline_status: checkIn.timeline_status,
+      manager_comment: checkIn.manager_comment,
+    },
+    { onConflict: "id" },
+  );
 
   if (error) throw error;
 }
