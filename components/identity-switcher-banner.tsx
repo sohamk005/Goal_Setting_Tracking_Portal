@@ -1,37 +1,34 @@
 "use client";
 
+import { CheckIcon, ChevronDownIcon, SparklesIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOutIcon, SparklesIcon, UserCircle2Icon } from "lucide-react";
-import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { useUser } from "@/context/UserContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MOCK_USERS, useUser, type UserRole } from "@/context/UserContext";
 import { cn } from "@/lib/utils";
 
-const ROLE_LABELS: Record<string, string> = {
+const ROLE_LABELS: Record<UserRole, string> = {
   employee: "Employee",
   manager: "Manager",
   admin: "HR Admin",
 };
 
-const ROLE_COLORS: Record<string, string> = {
-  employee: "bg-sky-500/15 text-sky-400 ring-sky-500/25",
-  manager: "bg-violet-500/15 text-violet-400 ring-violet-500/25",
-  admin: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/25",
+const ROLE_COLORS: Record<UserRole, string> = {
+  employee: "bg-sky-500/15 text-sky-500 ring-sky-500/25",
+  manager: "bg-violet-500/15 text-violet-500 ring-violet-500/25",
+  admin: "bg-emerald-500/15 text-emerald-500 ring-emerald-500/25",
 };
 
 export function IdentitySwitcherBanner() {
+  const { currentUser, switchUser, loading } = useUser();
   const router = useRouter();
-  const { currentUser, loading, signOut } = useUser();
 
-  const handleSignOut = async () => {
-    await signOut();
-    toast.success("Signed out successfully.");
-    router.push("/login");
-  };
-
-  // Don't render on auth pages (currentUser is null when loading or unauthenticated)
   if (loading || !currentUser) return null;
 
   return (
@@ -54,31 +51,54 @@ export function IdentitySwitcherBanner() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <UserCircle2Icon className="size-4 shrink-0 text-muted-foreground" />
-            <span className="hidden truncate text-muted-foreground sm:inline">
-              {currentUser.name}
-            </span>
-            <span
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            Acting as
+          </span>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
               className={cn(
-                "rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
-                ROLE_COLORS[currentUser.role] ?? ROLE_COLORS.employee,
+                "group flex items-center gap-2 rounded-full border border-border/50 bg-background/50 py-1 pl-1 pr-2",
+                "text-sm font-medium shadow-sm transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
               )}
             >
-              {ROLE_LABELS[currentUser.role] ?? currentUser.role}
-            </span>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSignOut}
-            className="h-7 gap-1.5 border-border bg-background px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <LogOutIcon className="size-3.5" />
-            Sign out
-          </Button>
+              <div
+                className={cn(
+                  "flex size-6 items-center justify-center rounded-full ring-1 ring-inset",
+                  ROLE_COLORS[currentUser.role],
+                )}
+              >
+                {currentUser.name.charAt(0)}
+              </div>
+              <span className="max-w-[120px] truncate sm:max-w-[160px]">
+                {currentUser.name}
+              </span>
+              <ChevronDownIcon className="size-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              {MOCK_USERS.map((user) => (
+                <DropdownMenuItem
+                  key={user.id}
+                  onClick={() => {
+                    switchUser(user.role);
+                    router.push(`/dashboard/${user.role}`);
+                  }}
+                  className="flex items-center justify-between gap-2 cursor-pointer"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{user.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {ROLE_LABELS[user.role]}
+                    </span>
+                  </div>
+                  {currentUser.id === user.id && (
+                    <CheckIcon className="size-4 text-emerald-500" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

@@ -10,8 +10,6 @@ import {
   type ReactNode,
 } from "react";
 
-import { supabase } from "@/utils/supabase";
-
 export type UserRole = "employee" | "manager" | "admin";
 
 export interface User {
@@ -22,9 +20,32 @@ export interface User {
   manager_id?: string | null;
 }
 
+export const MOCK_USERS: User[] = [
+  {
+    id: "33333333-3333-3333-3333-333333333333",
+    name: "Soham (Employee)",
+    email: "employee@atomquest.com",
+    role: "employee",
+    manager_id: "22222222-2222-2222-2222-222222222222",
+  },
+  {
+    id: "22222222-2222-2222-2222-222222222222",
+    name: "Sarah (Manager)",
+    email: "manager@atomquest.com",
+    role: "manager",
+  },
+  {
+    id: "11111111-1111-1111-1111-111111111111",
+    name: "HR (Admin)",
+    email: "admin@atomquest.com",
+    role: "admin",
+  },
+];
+
 interface UserContextValue {
   currentUser: User | null;
   loading: boolean;
+  switchUser: (role: UserRole) => void;
   signOut: () => Promise<void>;
 }
 
@@ -34,63 +55,31 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadUser = useCallback(async () => {
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      setCurrentUser(null);
-      setLoading(false);
-      return;
-    }
-
-    // Fetch profile from profiles table
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", authUser.id)
-      .single();
-
-    if (profile) {
-      setCurrentUser({
-        id: profile.id as string,
-        name: profile.name as string,
-        email: profile.email as string,
-        role: profile.role as UserRole,
-        manager_id: profile.manager_id as string | null,
-      });
-    } else {
-      setCurrentUser(null);
-    }
+  // Load from localStorage or default to employee
+  useEffect(() => {
+    const savedRole = localStorage.getItem("atomquest_role") as UserRole | null;
+    const initialUser =
+      MOCK_USERS.find((u) => u.role === savedRole) || MOCK_USERS[0];
+    setCurrentUser(initialUser);
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    void loadUser();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        setCurrentUser(null);
-        setLoading(false);
-      } else {
-        void loadUser();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [loadUser]);
+  const switchUser = useCallback((role: UserRole) => {
+    const user = MOCK_USERS.find((u) => u.role === role);
+    if (user) {
+      setCurrentUser(user);
+      localStorage.setItem("atomquest_role", role);
+    }
+  }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
     setCurrentUser(null);
+    localStorage.removeItem("atomquest_role");
   }, []);
 
   const value = useMemo(
-    () => ({ currentUser, loading, signOut }),
-    [currentUser, loading, signOut],
+    () => ({ currentUser, loading, switchUser, signOut }),
+    [currentUser, loading, switchUser, signOut],
   );
 
   return (

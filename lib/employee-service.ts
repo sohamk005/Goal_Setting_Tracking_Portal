@@ -31,7 +31,7 @@ export async function submitGoalSheet(
   managerId: string,
 ): Promise<void> {
   const rows = goals.map((g) => ({
-    id: g.id.startsWith("new-") ? undefined : g.id,
+    id: g.id.startsWith("new-") ? crypto.randomUUID() : g.id,
     employee_id: employeeId,
     employee_name: employeeName,
     manager_id: managerId,

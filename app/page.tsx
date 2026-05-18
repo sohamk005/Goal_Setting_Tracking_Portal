@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
@@ -21,10 +20,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUser } from "@/context/UserContext";
+import { useUser, type UserRole } from "@/context/UserContext";
 import { cn } from "@/lib/utils";
 
-const ROLE_TRACKS = {
+const ROLE_TRACKS: Record<UserRole, {
+  journey: string;
+  title: string;
+  description: string;
+  href: string;
+  icon: any;
+  accent: string;
+  ring: string;
+  buttonLabel: string;
+}> = {
   employee: {
     journey: "Employee Journey",
     title: "Individual Contributor",
@@ -58,10 +66,10 @@ const ROLE_TRACKS = {
     ring: "ring-emerald-500/25",
     buttonLabel: "Go to admin workspace",
   },
-} as const;
+};
 
 export default function HomePage() {
-  const { currentUser, loading } = useUser();
+  const { currentUser, loading, switchUser } = useUser();
   const router = useRouter();
 
   // Auto-redirect to the user's dashboard if already logged in
@@ -105,19 +113,25 @@ export default function HomePage() {
 
             <div className="flex flex-wrap gap-3">
               <Button
-                asChild
+                onClick={() => {
+                  switchUser("employee");
+                  router.push("/dashboard/employee");
+                }}
                 size="lg"
                 className="bg-sky-600 text-white hover:bg-sky-500"
               >
-                <Link href="/login">Sign in</Link>
+                Start Demo as Employee
               </Button>
               <Button
-                asChild
+                onClick={() => {
+                  switchUser("manager");
+                  router.push("/dashboard/manager");
+                }}
                 size="lg"
                 variant="outline"
                 className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
               >
-                <Link href="/signup">Create account</Link>
+                View as Manager
               </Button>
             </div>
           </section>
@@ -127,9 +141,17 @@ export default function HomePage() {
             className="grid flex-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
           >
             {(
-              Object.values(ROLE_TRACKS) as (typeof ROLE_TRACKS)[keyof typeof ROLE_TRACKS][]
-            ).map((track) => (
-              <TrackCard key={track.href} track={track} />
+              Object.entries(ROLE_TRACKS) as [UserRole, typeof ROLE_TRACKS[UserRole]][]
+            ).map(([role, track]) => (
+              <TrackCard 
+                key={role} 
+                role={role} 
+                track={track} 
+                onSelect={() => {
+                  switchUser(role);
+                  router.push(track.href);
+                }} 
+              />
             ))}
           </section>
         </div>
@@ -146,9 +168,15 @@ export default function HomePage() {
   );
 }
 
-type Track = (typeof ROLE_TRACKS)[keyof typeof ROLE_TRACKS];
-
-function TrackCard({ track }: { track: Track }) {
+function TrackCard({ 
+  role, 
+  track, 
+  onSelect 
+}: { 
+  role: UserRole; 
+  track: typeof ROLE_TRACKS[UserRole]; 
+  onSelect: () => void;
+}) {
   const Icon = track.icon;
 
   return (
@@ -185,14 +213,12 @@ function TrackCard({ track }: { track: Track }) {
 
       <CardFooter className="mt-auto border-t border-slate-800/80 bg-slate-950/40 px-6 py-5">
         <Button
-          asChild
+          onClick={onSelect}
           size="lg"
           className="h-10 w-full gap-2 bg-slate-100 text-slate-900 shadow-md shadow-black/20 hover:bg-white hover:text-slate-900"
         >
-          <Link href="/login">
-            {track.buttonLabel}
-            <ArrowRightIcon className="size-4" aria-hidden />
-          </Link>
+          {track.buttonLabel}
+          <ArrowRightIcon className="size-4" aria-hidden />
         </Button>
       </CardFooter>
     </Card>

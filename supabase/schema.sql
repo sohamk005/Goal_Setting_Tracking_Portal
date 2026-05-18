@@ -213,18 +213,29 @@ create trigger checkins_updated_at
 -- ----------------------------------------------------------------
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
+declare
+  v_manager_id uuid := null;
+  v_role text := 'employee';
 begin
+  -- Safely parse manager_id
+  if new.raw_user_meta_data->>'manager_id' is not null 
+     and new.raw_user_meta_data->>'manager_id' != '' 
+     and new.raw_user_meta_data->>'manager_id' != 'null' then
+    v_manager_id := (new.raw_user_meta_data->>'manager_id')::uuid;
+  end if;
+
+  -- Safely parse role
+  if new.raw_user_meta_data->>'role' is not null and new.raw_user_meta_data->>'role' != '' then
+    v_role := new.raw_user_meta_data->>'role';
+  end if;
+
   insert into public.profiles (id, name, email, role, manager_id)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
     new.email,
-    coalesce(new.raw_user_meta_data->>'role', 'employee'),
-    case
-      when new.raw_user_meta_data->>'manager_id' is not null
-      then (new.raw_user_meta_data->>'manager_id')::uuid
-      else null
-    end
+    v_role,
+    v_manager_id
   );
   return new;
 end;
