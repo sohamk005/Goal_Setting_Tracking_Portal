@@ -16,7 +16,7 @@
 ## 3. Architecture Diagram  
 The application follows a modern serverless architecture, utilizing Next.js for the frontend and Supabase (PostgreSQL) as a Backend-as-a-Service (BaaS). For this MVP demonstration, authentication is intentionally simplified using a Context-based Identity Switcher to enable seamless role-based workflow testing and faster evaluation. 
 
-*(See the `Architecture Diagram.png` image for visual representation).*
+![Architecture Diagram](./Architecture_Diagram.png)
 
 ---
 
